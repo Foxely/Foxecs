@@ -1,15 +1,15 @@
 #pragma once
 
 #include <memory>
-#include "Core/System.hpp"
+#include "Core/World.hpp"
 
 class Event;
 
+// template<typename... Types>
+// class RenderSystem : public System<Types...>
+// {
+// // public:
+// // 	RenderSystem(World& oWorld);
 
-class RenderSystem : public System
-{
-public:
-	RenderSystem(World& oWorld);
-
-	void Update(float dt);
-};
+// // 	void Update(float dt);
+// };
