@@ -1,13 +1,13 @@
 #pragma once
 
 #include <set>
-// #include <vector>
+#include <functional>
+#include <type_traits>
 #include "Types.hpp"
 
 
 class World;
 
-// template<typename... Comps>
 class System
 {
 public:
@@ -18,14 +18,14 @@ public:
 	{
 	}
 
+	// .each([](flecs::entity e, Position& p, const Velocity& v) {    
+    //         p.x += v.x;
+    //         p.y += v.y;
 
-	// explicit System(World* pWorld)
-	// {
-	// 	Signature signature;
-	// 	std::vector<std::type_info> vec = {typeid(Comps) ...};
-	// 	for (unsigned i = 0; i < vec.size(); ++i) {
-	// 		signature.set(world->GetComponentType<vec[i]>());
-	// 	}
-	// 	world->SetSystemSignature<RenderSystem>(signature);
-	// }
+    //         std::cout << "Moved " << e.name() << " to {" <<
+    //             p.x << ", " << p.y << "}" << std::endl;
+    //     });
+
+	template<typename... Types>
+	void each(typename std::common_type<std::function<void(Entity, Types&...)>>::type viewFunc);
 };

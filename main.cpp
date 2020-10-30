@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "Core/World.hpp"
+#include "Core/System.hpp"
 #include "Components/Transform.hpp"
 #include "System/RenderSystem.hpp"
 
@@ -26,8 +27,9 @@ int main()
 	// 	signature.set(world.GetComponentType<Transform>());
 	// 	world.SetSystemSignature<RenderSystem>(signature);
 	// }
-
-    auto renderSystem = world.system<RenderSystem, Transform>();
+    world.system<RenderSystem, Transform>()->each<Transform>([](Entity e, Transform& transform) {    
+        std::cout << transform.position.x;
+    });
 
     Entity entity = world.CreateEntity();
     world.AddComponent<Transform>(entity, { .position = Vec2(1, 2) });
@@ -35,7 +37,7 @@ int main()
     Entity entitys = world.CreateEntity();
     world.AddComponent<Transform>(entitys, { .position = Vec2(5, 2) });
 
-    renderSystem->Update(0);
+    // renderSystem->Update(0);
     // std::cout << world.GetComponent<Transform>(entity).position.x;
 	// physicsSystem->Init();
 

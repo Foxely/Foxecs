@@ -12,8 +12,8 @@ RenderSystem::RenderSystem(World& oWorld) : System(oWorld)
 
 void RenderSystem::Update(float dt)
 {
-	for (auto const& entity : mEntities)
-	{
-    	std::cout << m_oWorld.GetComponent<Transform>(entity).position.x;
-	}
+	// for (auto const& entity : mEntities)
+	// {
+    // 	std::cout << m_oWorld.GetComponent<Transform>(entity).position.x;
+	// }
 }

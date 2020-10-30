@@ -12,7 +12,4 @@ public:
 	RenderSystem(World& oWorld);
 
 	void Update(float dt);
-
-private:
-	Entity mCamera;
 };
