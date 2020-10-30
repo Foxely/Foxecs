@@ -4,6 +4,7 @@
 
 #include "Core/World.hpp"
 #include "Core/System.hpp"
+#include "Core/System.cpp"
 #include "Components/Transform.hpp"
 #include "System/RenderSystem.hpp"
 
