@@ -13,12 +13,6 @@ struct Message
     std::string msg;
 };
 
-void QuitHandler(Event& event)
-{
-    (void) event;
-	bRun = false;
-}
-
 int main()
 {
     World world;
@@ -45,10 +39,7 @@ int main()
     world.AddComponent<Transform>(ent, { .position = Vec2(7, 2) });
     world.AddComponent<Message>(ent, { "Hello !" });
     world.RemoveComponent<Message>(ent);
-
-    while (bRun)
-    {
-        world.Update();
-    }
+    
+    world.Update();
     return 0;
 }
