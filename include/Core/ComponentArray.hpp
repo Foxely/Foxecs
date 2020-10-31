@@ -18,9 +18,13 @@ template<typename T>
 class ComponentArray : public IComponentArray
 {
 public:
-	void InsertData(Entity entity, T component)
+	inline void InsertData(Entity entity, T component)
 	{
-		assert(mEntityToIndexMap.find(entity) == mEntityToIndexMap.end() && "Component added to same entity more than once.");
+		if (mEntityToIndexMap.find(entity) != mEntityToIndexMap.end())
+		{
+			std::cerr << "Component added to same entity more than once." << std::endl;
+			return;
+		}
 
 		// Put new entry at end
 		size_t newIndex = mSize;
@@ -30,9 +34,13 @@ public:
 		++mSize;
 	}
 
-	void RemoveData(Entity entity)
+	inline void RemoveData(Entity entity)
 	{
-		assert(mEntityToIndexMap.find(entity) != mEntityToIndexMap.end() && "Removing non-existent component.");
+		if (mEntityToIndexMap.find(entity) == mEntityToIndexMap.end())
+		{
+			std::cerr << "'" << typeid(T).name() << "': Removing non-existent component." << std::endl;
+			return;
+		}
 
 		// Copy element at end into deleted element's place to maintain density
 		size_t indexOfRemovedEntity = mEntityToIndexMap[entity];
@@ -50,14 +58,18 @@ public:
 		--mSize;
 	}
 
-	T& GetData(Entity entity)
+	inline T& GetData(Entity entity)
 	{
-		assert(mEntityToIndexMap.find(entity) != mEntityToIndexMap.end() && "Retrieving non-existent component.");
+		if(mEntityToIndexMap.find(entity) == mEntityToIndexMap.end())
+		{
+			std::cerr << "'" << typeid(T).name() << "': Retrieving non-existent component." << std::endl;
+			assert(false);
+		}
 
 		return mComponentArray[mEntityToIndexMap[entity]];
 	}
 
-	void EntityDestroyed(Entity entity) override
+	inline void EntityDestroyed(Entity entity) override
 	{
 		if (mEntityToIndexMap.find(entity) != mEntityToIndexMap.end())
 		{

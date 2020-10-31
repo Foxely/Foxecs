@@ -6,6 +6,8 @@
 #include <functional>
 #include <type_traits>
 #include <string>
+#include <vector>
+#include <any>
 
 #include "ComponentManager.hpp"
 #include "EntityManager.hpp"
@@ -14,99 +16,99 @@
 
 class World;
 
-template<typename Func>
-class Invoker
-{
-public:
-	World& m_oWorld;
-	std::set<Entity> mEntities;
-
-	explicit Invoker(World& oWorld) : m_oWorld(oWorld) {	}
-
-    template<typename... Types>
-	void each(typename std::common_type<std::function<void(Entity, Types&...)>>::type viewFunc);
-
-private:
-    Func m_func;
-    //std::function<void(Entity, Types&...)> updateFunc;
-};
-
+// @brief The System is used to perform the logic
 class System
 {
 public:
 	World& m_oWorld;
-	std::set<Entity> mEntities;
+	std::string name;											// The name of the system, used to generate unique Id for the different Event Phases like OnAdd or OnRemove
+	std::set<Entity> m_Entities;								// List of all entities who match with the key signature of the System
 
 	explicit System(World& oWorld) : m_oWorld(oWorld) {	}
 
-    template<typename... Types>
-	void each(typename std::common_type<std::function<void(Entity, Types&...)>>::type viewFunc);
+	// @brief This function store a function for this System that will be called on the OnUpdate Phase
+	void each(std::function<void(Entity)> updateFunc);
+
+	// @brief This function allows to add a listener to an event
+	System& kind(EventId id, std::function<void(Entity)> func);
 
 private:
-    //std::function<void(Entity, Types&...)> updateFunc;
+	void UpdatePhase(Event& event)
+	{
+		for(auto& ent : m_Entities)
+			kinds[event.GetType()](ent);
+	}
+
+	void Phase(Event& event)
+	{
+		Entity ent = event.GetParam<Entity>(Foxecs::System::ENTITY);
+		kinds[event.GetType()](ent);
+	}
+
+	std::function<void(Entity)> m_UpdateFunc;
+	std::unordered_map<EventId, std::function<void(Entity)>> kinds;
 };
 
 
+// @brief This is the Manager of all System class
 class SystemManager
 {
 public:
+	// @brief This function allows to add a new System
 	std::shared_ptr<System> RegisterSystem(World* pWorld, std::string& name)
 	{
         if (name.empty())
-            name = "System_" + std::to_string(mSystems.size());
+            name = "System_" + std::to_string(m_vSystems.size());
 
-		assert(mSystems.find(name.c_str()) == mSystems.end() && "Registering system more than once.");
+		assert(m_vSystems.find(name.c_str()) == m_vSystems.end() && "Registering system more than once.");
 
 		auto system = std::make_shared<System>(*pWorld);
-		mSystems.insert({name.c_str(), system});
+		system->name = name;
+		m_vSystems.insert({name, system});
 		return system;
 	}
 
+	// @brief This function allows to add a Signature to the System who match with the name given in parameter
 	void SetSignature(Signature signature, std::string& name)
 	{
-		assert(mSystems.find(name.c_str()) != mSystems.end() && "System used before registered.");
+		assert(m_vSystems.find(name.c_str()) != m_vSystems.end() && "System used before registered.");
 
-		mSignatures.insert({name.c_str(), signature});
+		m_vSignatures.insert({name.c_str(), signature});
 	}
 
-	template<typename T>
-	void GetSignature()
+	// @brief This function allows to get the Signature who match with the name given in parameter
+	void GetSignature(std::string& name)
 	{
-		const char* typeName = typeid(T).name();
-		if (mSystems.find(typeName) != mSystems.end())
-			mSignatures[typeName];
+		if (m_vSystems.find(name) != m_vSystems.end())
+			m_vSignatures[name];
 		else
-			std::cerr << "The System '" << typeName << "' have no signature.";
+			std::cerr << "The System '" << name << "' have no signature.";
 	}
 
+	// @brief This function allows to delete a entity in the system list
 	void EntityDestroyed(Entity entity)
 	{
-		for (auto const& pair : mSystems)
+		for (auto const& pair : m_vSystems)
 		{
 			auto const& system = pair.second;
 
-			system->mEntities.erase(entity);
+			system->m_Entities.erase(entity);
 		}
 	}
 
-	void EntitySignatureChanged(Entity entity, Signature entitySignature)
-	{
-		for (auto const& pair : mSystems)
-		{
-			auto const& type = pair.first;
-			auto const& system = pair.second;
-			auto const& systemSignature = mSignatures[type];
+	// @brief This function remove/add the entity, given in parameter, in the system list and it trigger a OnAdd/OnRemove event
+	void EntitySignatureChanged(Entity entity, Signature entitySignature);
 
-			if ((entitySignature & systemSignature) == systemSignature)
-				system->mEntities.insert(entity);
-			else
-				system->mEntities.erase(entity);
-		}
+	void ForEachSystem()
+	{
+		// for(auto& system : m_vSystems)
+		// 	for (auto ent : system.second->m_Entities)
+		// 		system.second->update(ent);
 	}
 
 private:
-	std::unordered_map<const char*, Signature> mSignatures{};
-	std::unordered_map<const char*, std::shared_ptr<System>> mSystems{};
+	std::unordered_map<std::string, Signature> m_vSignatures{};
+	std::unordered_map<std::string, std::shared_ptr<System>> m_vSystems{};
 };
 
 class World
@@ -114,138 +116,196 @@ class World
 public:
 	explicit World()
 	{
-		mComponentManager = std::make_unique<ComponentManager>();
-		mEntityManager = std::make_unique<EntityManager>();
-		mEventManager = std::make_unique<EventManager>();
-		mSystemManager = std::make_unique<SystemManager>();
+		m_ComponentManager = std::make_unique<ComponentManager>();
+		m_EntityManager = std::make_unique<EntityManager>();
+		m_EventManager = std::make_unique<EventManager>();
+		m_SystemManager = std::make_unique<SystemManager>();
 	}
 
-	// Entity methods
+	// @brief This function allows to create a new entity
 	Entity CreateEntity()
 	{
-		return mEntityManager->CreateEntity();
+		return m_EntityManager->CreateEntity();
 	}
 
+	// @brief This function allows to destroy the entity, given in parameter
 	void DestroyEntity(Entity entity)
 	{
-		mEntityManager->DestroyEntity(entity);
-		mComponentManager->EntityDestroyed(entity);
-		mSystemManager->EntityDestroyed(entity);
+		m_EntityManager->DestroyEntity(entity);
+		m_ComponentManager->EntityDestroyed(entity);
+		m_SystemManager->EntityDestroyed(entity);
 	}
 
 
-	// Component methods
+	// @brief This function allows to register an new Component
 	template<typename T>
 	void RegisterComponent()
 	{
-		mComponentManager->RegisterComponent<T>();
+		m_ComponentManager->RegisterComponent<T>();
 	}
 
+	// @brief This function allows to add an Component in the entity
 	template<typename T>
 	void AddComponent(Entity entity, T component)
 	{
-		if (!mComponentManager->ComponentIsRegistered<T>())
-		{
+		if (!m_ComponentManager->ComponentIsRegistered<T>())
 			RegisterComponent<T>();
-		}
 
-		mComponentManager->AddComponent<T>(entity, component);
+		m_ComponentManager->AddComponent<T>(entity, component);
 
-		auto signature = mEntityManager->GetSignature(entity);
-		signature.set(mComponentManager->GetComponentType<T>(), true);
-		mEntityManager->SetSignature(entity, signature);
+		auto signature = m_EntityManager->GetSignature(entity);
+		signature.set(m_ComponentManager->GetComponentType<T>(), true);
+		m_EntityManager->SetSignature(entity, signature);
 
-		mSystemManager->EntitySignatureChanged(entity, signature);
+		m_SystemManager->EntitySignatureChanged(entity, signature);
 	}
 
+	// @brief This function allows to remove an Component in the entity
 	template<typename T>
 	void RemoveComponent(Entity entity)
 	{
-		mComponentManager->RemoveComponent<T>(entity);
+		m_ComponentManager->RemoveComponent<T>(entity);
 
-		auto signature = mEntityManager->GetSignature(entity);
-		signature.set(mComponentManager->GetComponentType<T>(), false);
-		mEntityManager->SetSignature(entity, signature);
-		mSystemManager->EntitySignatureChanged(entity, signature);
+		auto signature = m_EntityManager->GetSignature(entity);
+		signature.set(m_ComponentManager->GetComponentType<T>(), false);
+		m_EntityManager->SetSignature(entity, signature);
+		m_SystemManager->EntitySignatureChanged(entity, signature);
 	}
 
+	// @brief This function allows to get the Component in the entity
 	template<typename T>
 	T& GetComponent(Entity entity)
 	{
-		return mComponentManager->GetComponent<T>(entity);
+		return m_ComponentManager->GetComponent<T>(entity);
 	}
 
+	// @brief This function allows to get the type of a Component
 	template<typename T>
 	ComponentType GetComponentType()
 	{
-		if (!mComponentManager->ComponentIsRegistered<T>())
+		if (!m_ComponentManager->ComponentIsRegistered<T>())
 			RegisterComponent<T>();
 
-		return mComponentManager->GetComponentType<T>();
+		return m_ComponentManager->GetComponentType<T>();
 	}
 
 
 	// System methods
-	std::shared_ptr<System> RegisterSystem(std::string name)
+	// std::shared_ptr<System> RegisterSystem(std::string name = "")
+	// {
+	// 	return m_SystemManager->RegisterSystem(this, name);
+	// }
+
+	template <class A>
+	void process_one_type(Signature& signature)
 	{
-		return mSystemManager->RegisterSystem(this, name);
+		signature.set(GetComponentType<A>());
 	}
-
-
+	
+	// @brief This function allows to register and create a new System
 	template<typename... Comps>
 	std::shared_ptr<System> system(std::string name = "")
 	{
-		auto system = mSystemManager->RegisterSystem(this, name);
+		auto system = m_SystemManager->RegisterSystem(this, name);
 
 		Signature signature;
-		signature.set(GetComponentType<Comps...>());
-		SetSystemSignature(signature, name);
+		int _[] = {0, (process_one_type<Comps>(signature), 0)...};
+		(void)_;
+		m_SystemManager->SetSignature(signature, name);
 		return system;
 	}
 
-	void SetSystemSignature(Signature signature, std::string& name)
-	{
-		mSystemManager->SetSignature(signature, name);
-	}
-
-
 	// Event methods
+	// @brief This function allows to add a new Listener
 	void AddEventListener(EventId eventId, std::function<void(Event&)> const& listener)
 	{
-		mEventManager->AddListener(eventId, listener);
+		m_EventManager->AddListener(eventId, listener);
 	}
 
+	// @brief This function allows to trigger an event
 	void SendEvent(Event& event)
 	{
-		mEventManager->SendEvent(event);
+		m_EventManager->SendEvent(event);
 	}
 
+	// @brief This function allows to trigger an event
 	void SendEvent(EventId eventId)
 	{
-		mEventManager->SendEvent(eventId);
+		m_EventManager->SendEvent(eventId);
 	}
 
+	// @brief This function allows to trigger an event
     void Update(float dt = 0.0f)
 	{
-
+		(void) dt;
+		m_EventManager->SendEvent(Foxecs::System::OnUpdate);
+		// m_SystemManager->ForEachSystem();
 	}
 
 private:
-	std::unique_ptr<ComponentManager> mComponentManager;
-	std::unique_ptr<EntityManager> mEntityManager;
-	std::unique_ptr<EventManager> mEventManager;
-	std::unique_ptr<SystemManager> mSystemManager;
+	std::unique_ptr<ComponentManager> m_ComponentManager;
+	std::unique_ptr<EntityManager> m_EntityManager;
+	std::unique_ptr<EventManager> m_EventManager;
+	std::unique_ptr<SystemManager> m_SystemManager;
 };
+
+void SystemManager::EntitySignatureChanged(Entity entity, Signature entitySignature)
+{
+	for (auto const& pair : m_vSystems)
+	{
+		auto const& type = pair.first;
+		auto const& system = pair.second;
+		auto const& systemSignature = m_vSignatures[type];
+
+		if ((entitySignature & systemSignature) == systemSignature)
+		{
+			bool bIsExist = system->m_Entities.find(entity) != system->m_Entities.end();
+			system->m_Entities.insert(entity);
+
+			// Si il n'existe pas, Envoyez l'event OnAdd
+			if (!bIsExist)
+			{
+				Event event(fnv1a_32(system->name.c_str(), system->name.size()) + Foxecs::System::OnAdd);
+				event.SetParam<Entity>(Foxecs::System::ENTITY, entity);
+				system->m_oWorld.SendEvent(event);
+			}
+		}
+		else
+		{
+			bool bIsExist = system->m_Entities.find(entity) != system->m_Entities.end();
+			if (bIsExist)
+			{
+				Event event(fnv1a_32(system->name.c_str(), system->name.size()) + Foxecs::System::OnRemove);
+				event.SetParam<Entity>(Foxecs::System::ENTITY, entity);
+				system->m_oWorld.SendEvent(event);
+			}
+			system->m_Entities.erase(entity);
+		}
+	}
+}
 
 
 // -----------------------------------
 // --       System Functions        --
 // -----------------------------------
-template<typename... Types>
-inline void System::each(typename std::common_type<std::function<void(Entity, Types&...)>>::type viewFunc)
+
+inline void System::each(std::function<void(Entity)> updateFunc)
 {
-    for (auto ent : mEntities)
-    {
-        viewFunc(ent, m_oWorld.GetComponent<Types...>(ent));
-    }
+	// m_UpdateFunc = updateFunc;
+	// m_oWorld.AddEventListener(METHOD_LISTENER(Foxecs::System::OnUpdate, System::UpdatePhase));
+	kind(Foxecs::System::OnUpdate, updateFunc);
+}
+
+inline System& System::kind(EventId id, std::function<void(Entity)> func)
+{
+	EventId event = id;
+	if (id != Foxecs::System::OnUpdate)
+	{
+		event = fnv1a_32(name.c_str(), name.size()) + id;
+		m_oWorld.AddEventListener(METHOD_LISTENER(event, System::Phase));
+	}
+	else
+		m_oWorld.AddEventListener(METHOD_LISTENER(event, System::UpdatePhase));
+	kinds.insert({ event, func });
+	return *this;
 }

@@ -51,6 +51,8 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "typeinfo": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "map": "cpp",
+        "cstring": "cpp"
     }
 }

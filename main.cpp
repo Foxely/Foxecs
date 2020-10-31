@@ -1,70 +1,54 @@
 #include <chrono>
 #include <random>
 #include <iostream>
+#include <string>
 
 #include "Core/World.hpp"
 #include "Components/Transform.hpp"
-#include "System/RenderSystem.hpp"
 
-static bool quit = false;
+static bool bRun = true;
 
+struct Message
+{
+    std::string msg;
+};
 
 void QuitHandler(Event& event)
 {
-	quit = true;
+    (void) event;
+	bRun = false;
 }
 
 int main()
 {
     World world;
 
-	world.AddEventListener(FUNCTION_LISTENER(Events::Window::QUIT, QuitHandler));
+    world.system<Message>()->kind(Foxecs::System::OnAdd, [&world](Entity e) {
+        std::cout << e << ": A new Message Component !!" << std::endl;
+    });
 
-	// auto renderSystem = world.RegisterSystem<RenderSystem>();
-	// {
-	// 	Signature signature;
-	// 	signature.set(world.GetComponentType<Transform>());
-	// 	world.SetSystemSignature<RenderSystem>(signature);
-	// }
-    
-    auto renderSystem = world.system<Transform>();
+    world.system<Message>()->kind(Foxecs::System::OnRemove, [&world](Entity e) {
+        std::cout << e << ": A remove Message Component !!" << std::endl;
+    });
+
+    world.system<Transform>()->kind(Foxecs::System::OnAdd, [&world](Entity e) {
+        std::cout << e << ": A new Transform Component !!" << std::endl;
+    });
     
     Entity entity = world.CreateEntity();
     world.AddComponent<Transform>(entity, { .position = Vec2(1, 2) });
 
     Entity entitys = world.CreateEntity();
     world.AddComponent<Transform>(entitys, { .position = Vec2(5, 2) });
-    
-    renderSystem->each<Transform>([](Entity e, Transform& transform) {
-        std::cout << transform.position.x << std::endl;
-    });
-    // renderSystem->Update(0);
-    // std::cout << world.GetComponent<Transform>(entity).position.x;
-	// physicsSystem->Init();
 
-	// std::vector<Entity> entities(MAX_ENTITIES - 1);
+    Entity ent = world.CreateEntity();
+    world.AddComponent<Transform>(ent, { .position = Vec2(7, 2) });
+    world.AddComponent<Message>(ent, { "Hello !" });
+    world.RemoveComponent<Message>(ent);
 
-	// for (auto& entity : entities)
-	// {
-	// 	entity = gCoordinator.CreateEntity();
-	// 	// gCoordinator.AddComponent(entity, Player{});
-
-	// 	// gCoordinator.AddComponent<Gravity>(
-	// 	// 	entity,
-	// 	// 	{ Vec3(0.0f, randGravity(generator), 0.0f) });
-
-	// 	// gCoordinator.AddComponent(
-	// 	// 	entity,
-	// 	// 	Transform {
-	// 	// 		.position = Vec3(randPosition(generator), randPosition(generator), randPosition(generator)),
-	// 	// 		.rotation = Vec3(randRotation(generator), randRotation(generator), randRotation(generator)),
-	// 	// 		.scale = Vec3(scale, scale, scale)
-	// 	// 	});
-	// }
-
-	// while (!quit)
-	// {
-	// 	// physicsSystem->Update(dt);
-	// }
-	return 0;
+    while (bRun)
+    {
+        world.Update();
+    }
+    return 0;
 }
