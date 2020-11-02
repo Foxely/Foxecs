@@ -16,6 +16,8 @@
 
 class World;
 
+using SystemFn = std::function<void(World&, Entity&)>;
+
 // @brief The System is used to perform the logic
 class System
 {
@@ -27,26 +29,26 @@ public:
 	explicit System(World& oWorld) : m_oWorld(oWorld) {	}
 
 	// @brief This function store a function for this System that will be called on the OnUpdate Phase
-	void each(std::function<void(Entity)> updateFunc);
+	void each(SystemFn updateFunc);
 
 	// @brief This function allows to add a listener to an event
-	System& kind(EventId id, std::function<void(Entity)> func);
+	System& kind(EventId id, SystemFn func);
 
 private:
 	void UpdatePhase(Event& event)
 	{
 		for(auto& ent : m_Entities)
-			kinds[event.GetType()](ent);
+			kinds[event.GetType()](m_oWorld, (Entity &) ent);
 	}
 
 	void Phase(Event& event)
 	{
 		Entity ent = event.GetParam<Entity>(Foxecs::System::ENTITY);
-		kinds[event.GetType()](ent);
+		kinds[event.GetType()](m_oWorld, ent);
 	}
 
-	std::function<void(Entity)> m_UpdateFunc;
-	std::unordered_map<EventId, std::function<void(Entity)>> kinds;
+	SystemFn m_UpdateFunc;
+	std::unordered_map<EventId, SystemFn> kinds;
 };
 
 
@@ -249,7 +251,7 @@ private:
 	std::unique_ptr<SystemManager> m_SystemManager;
 };
 
-void SystemManager::EntitySignatureChanged(Entity entity, Signature entitySignature)
+inline void SystemManager::EntitySignatureChanged(Entity entity, Signature entitySignature)
 {
 	for (auto const& pair : m_vSystems)
 	{
@@ -289,17 +291,17 @@ void SystemManager::EntitySignatureChanged(Entity entity, Signature entitySignat
 // --       System Functions        --
 // -----------------------------------
 
-inline void System::each(std::function<void(Entity)> updateFunc)
+inline void System::each(SystemFn updateFunc)
 {
 	// m_UpdateFunc = updateFunc;
 	// m_oWorld.AddEventListener(METHOD_LISTENER(Foxecs::System::OnUpdate, System::UpdatePhase));
 	kind(Foxecs::System::OnUpdate, updateFunc);
 }
 
-inline System& System::kind(EventId id, std::function<void(Entity)> func)
+inline System& System::kind(EventId id, SystemFn func)
 {
 	EventId event = id;
-	if (id != Foxecs::System::OnUpdate)
+	if (id == Foxecs::System::OnAdd || id == Foxecs::System::OnRemove)
 	{
 		event = fnv1a_32(name.c_str(), name.size()) + id;
 		m_oWorld.AddEventListener(METHOD_LISTENER(event, System::Phase));
