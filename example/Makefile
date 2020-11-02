@@ -13,8 +13,8 @@ MAIN_SRC = main.cpp
 MAIN_OBJ = $(MAIN_SRC:%.cpp=%.o)
 
 CFLAGS += -std=c++17 -W -Wall -Wextra $(if $(DEBUG),-g3) $(if $(DEBUG),-DDEBUG)
-LDFLAGS = -L../ -lfoxecs
-INC_FLAGS = -I../include
+LDFLAGS =
+INC_FLAGS = -I../include -Iinclude
 
 all: bin/$(EXECUTABLE)
 

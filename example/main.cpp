@@ -17,15 +17,15 @@ int main()
 {
     World world;
 
-    world.system<Message>()->kind(Foxecs::System::OnAdd, [&world](Entity e) {
+    world.system<Message>()->kind(Foxecs::System::OnAdd, [](World& w, Entity& e) {
         std::cout << e << ": A new Message Component !!" << std::endl;
     });
 
-    world.system<Message>()->kind(Foxecs::System::OnRemove, [&world](Entity e) {
+    world.system<Message>()->kind(Foxecs::System::OnRemove, [](World& w, Entity& e) {
         std::cout << e << ": A remove Message Component !!" << std::endl;
     });
 
-    world.system<Transform>()->kind(Foxecs::System::OnAdd, [&world](Entity e) {
+    world.system<Transform>()->kind(Foxecs::System::OnAdd, [](World& w, Entity& e) {
         std::cout << e << ": A new Transform Component !!" << std::endl;
     });
     

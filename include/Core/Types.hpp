@@ -15,7 +15,7 @@ constexpr std::uint32_t operator "" _hash(char const* s, std::size_t count)
 	return fnv1a_32(s, count);
 }
 
-std::uint32_t CreateEventId(char const* s)
+inline std::uint32_t CreateEventId(char const* s)
 {
 	return fnv1a_32(s, strlen(s));
 }
