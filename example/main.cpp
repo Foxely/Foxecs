@@ -10,36 +10,45 @@ static bool bRun = true;
 
 struct Message
 {
+    Message(std::string str) : msg(str) {}
     std::string msg;
 };
 
 int main()
 {
-    World world;
+    fox::World world;
 
-    world.system<Message>()->kind(Foxecs::System::OnAdd, [](World& w, Entity& e) {
-        std::cout << e << ": A new Message Component !!" << std::endl;
-    });
+    world.RegisterComponent<Message>();
+    world.RegisterComponent<Transform>();
 
-    world.system<Message>()->kind(Foxecs::System::OnRemove, [](World& w, Entity& e) {
-        std::cout << e << ": A remove Message Component !!" << std::endl;
-    });
+    world.system<Message>()
+        .kind(fox::ecs::OnAdd)
+        .each([](fox::Entity& e, Option<Message&> msg) {
+            std::cout << e.get_id() << ": A new Message Component !!" << std::endl;
+        });
 
-    world.system<Transform>()->kind(Foxecs::System::OnAdd, [](World& w, Entity& e) {
-        std::cout << e << ": A new Transform Component !!" << std::endl;
-    });
-    
-    Entity entity = world.CreateEntity();
-    world.AddComponent<Transform>(entity, { .position = Vec2(1, 2) });
+    world.system<Message>()
+        .kind(fox::ecs::OnRemove)
+        .each([](fox::Entity& e, Option<Message&> msg) {
+            std::cout << e.get_id() << ": A remove Message Component !!" << std::endl;
+        });
 
-    Entity entitys = world.CreateEntity();
-    world.AddComponent<Transform>(entitys, { .position = Vec2(5, 2) });
+    world.system<Transform>()
+        .kind(fox::ecs::OnAdd)
+        .each([](fox::Entity& e, Option<Transform&> transform) {
+            std::cout << e.get_id() << ": A new Transform Component !!" << std::endl;
+        });
 
-    Entity ent = world.CreateEntity();
-    world.AddComponent<Transform>(ent, { .position = Vec2(7, 2) });
-    world.AddComponent<Message>(ent, { "Hello !" });
-    world.RemoveComponent<Message>(ent);
-    
-    world.Update();
+    fox::Entity entity = world.new_entity();
+    entity.add<Transform>(Vec2(1, 2));
+
+    fox::Entity entitys = world.new_entity();
+    world.add_component<Transform>(entitys, Vec2(5, 2));
+
+    fox::Entity ent = world.new_entity();
+    ent.add<Transform>(Vec2(7, 2));
+    ent.add<Message>("Hello !");
+    ent.remove<Message>();
+
     return 0;
 }

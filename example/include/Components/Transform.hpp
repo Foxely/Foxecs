@@ -5,5 +5,6 @@
 
 struct Transform
 {
+    Transform(Vec2 pos) : position(pos) {}
     Vec2 position;
 };
