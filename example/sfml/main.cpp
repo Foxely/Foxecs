@@ -6,8 +6,6 @@
 #include "Core/World.hpp"
 #include "Components/Transform.hpp"
 
-static bool bRun = true;
-
 struct Message
 {
     Message(std::string str) : msg(str) {}
